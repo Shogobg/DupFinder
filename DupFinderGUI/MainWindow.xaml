@@ -1,0 +1,21 @@
+﻿<Window x:Class="DupFinderGUI.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:DupFinderGUI"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="350" Width="525">
+	<Grid>
+		<ProgressBar x:Name="ComparrisonProgress" HorizontalAlignment="Left" Height="11" VerticalAlignment="Bottom" Width="517" SnapsToDevicePixels="True"/>
+		<TextBlock Text="{Binding ElementName=ComparrisonProgress, Path=Value, StringFormat={}{0:0}}" HorizontalAlignment="Center" VerticalAlignment="Bottom"/>
+		<Button x:Name="button" Content="Find duplicates" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="89" Click="button_Click"/>
+		<DataGrid x:Name="dataGrid" HorizontalAlignment="Left" Margin="10,35,0,0" VerticalAlignment="Top" Width="497" Height="263" ItemsSource="{Binding DuplicatedFiles}">
+			<DataGrid.Columns>
+				<DataGridTextColumn Binding="{Binding}" />
+			</DataGrid.Columns>
+		</DataGrid>
+		<Label x:Name="lblRemainingTime" Content="Label" HorizontalAlignment="Left" Margin="335,5,0,0" VerticalAlignment="Top" Width="172" Height="25"/>
+		<Label x:Name="lblTotalTime" Content="Label" HorizontalAlignment="Left" Margin="185,4,0,0" VerticalAlignment="Top" Width="145"/>
+	</Grid>
+</Window>
