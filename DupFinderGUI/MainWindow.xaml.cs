@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
-using System.Threading;
 using System.Windows;
 
 namespace DupFinderGUI
@@ -12,16 +12,13 @@ namespace DupFinderGUI
 	/// </summary>
 	public partial class MainWindow : Window
 	{
-		public List<string> DuplicatedFiles
-		{
-			get; set;
-		}
+		public List<DuplicateFileRecord> DuplicatedFiles { get; set; }
 
-		private Thread duplicateFinder = null;
+		private BackgroundWorker duplicateFinder = null;
 
 		public MainWindow()
 		{
-			this.DuplicatedFiles = new List<string>();
+			this.DuplicatedFiles = new List<DuplicateFileRecord>();
 			InitializeComponent();
 			DataContext = this;
 		}
@@ -30,9 +27,23 @@ namespace DupFinderGUI
 		{
 			if (duplicateFinder == null)
 			{
-				duplicateFinder = new Thread(worker);
-				duplicateFinder.IsBackground = true;
-				duplicateFinder.Start();
+				duplicateFinder = new BackgroundWorker();
+				duplicateFinder.WorkerSupportsCancellation = true;
+
+				// This is executed in a background thread
+				duplicateFinder.DoWork += (s, args) => {
+					worker();
+				};
+
+				// This runs in the main UI thread
+				duplicateFinder.RunWorkerCompleted += (s, args) => {
+					if (args.Error != null)  // if an exception occurred during DoWork,
+						MessageBox.Show(args.Error.ToString());  // do your error handling here
+
+					dataGrid.Items.Refresh();
+				};
+
+				duplicateFinder.RunWorkerAsync();
 			}
 		}
 
@@ -40,7 +51,7 @@ namespace DupFinderGUI
 		{
 			Stopwatch sw = Stopwatch.StartNew();
 
-			string[] FileList = Directory.GetFiles("C:\\Users\\Shogo\\Downloads"); // F:\\CommonDownloads C:\\Users\\Shogo\\Downloads
+			string[] FileList = Directory.GetFiles("F:\\CommonDownloads"); // F:\\CommonDownloads C:\\Users\\Shogo\\Downloads
 
 			Dispatcher.Invoke(() =>
 			{
@@ -55,8 +66,7 @@ namespace DupFinderGUI
 				{
 					if (FilesAreEqual(new FileInfo(FileList[i]), new FileInfo(FileList[j])))
 					{
-						DuplicatedFiles.Add(FileList[j]);
-						
+						DuplicatedFiles.Add(new DuplicateFileRecord(new FileInfo(FileList[j])));
 					}
 				}
 
@@ -66,19 +76,8 @@ namespace DupFinderGUI
 				{
 					ComparrisonProgress.Value = i + 1;
 					lblRemainingTime.Content = "Remaining time: " + remainingTime.ToString(@"dd\.hh\:mm\:ss");
-					/*
-					+ remainingTime.Days
-					+ "days " + remainingTime.Hours
-					+ ":" + remainingTime.Minutes
-					+ ":" + remainingTime.Seconds;
-					*/
 				});
 			}
-
-			Dispatcher.Invoke(() =>
-			{
-				dataGrid.Items.Refresh();
-			});
 
 			sw.Stop();
 
@@ -117,6 +116,11 @@ namespace DupFinderGUI
 			}
 
 			return true;
+		}
+
+		private void stopSearchButton_Click(object sender, RoutedEventArgs e)
+		{
+
 		}
 	}
 }
