@@ -21,18 +21,23 @@ namespace DupFinderGUI
 
 		string[] FileList;
 		private int checkedFiles = 0;
+		Stopwatch sw = new Stopwatch();
+
+		bool worker1run = false, worker2run = false;
 
 		public MainWindow()
 		{
 			DuplicatedFiles = new Dictionary<String, DuplicateFileRecord>();
 			InitializeComponent();
 			DataContext = this;
-			FileList = Directory.GetFiles("F:\\PCBackup\\Hen\\dup");
+			FileList = Directory.GetFiles("F:\\PCBackup\\Hot");
 			ComparrisonProgress.Maximum = FileList.Length;
 		}
 
 		private void button_Click(object sender, RoutedEventArgs e)
 		{
+			sw.Start();
+
 			if (duplicateFinder == null)
 			{
 				duplicateFinder = new BackgroundWorker();
@@ -40,20 +45,28 @@ namespace DupFinderGUI
 
 				// This is executed in a background thread
 				duplicateFinder.DoWork += (s, args) => {
+					worker1run = false;
 					worker(0, FileList.Length / 2 - 1);
 				};
 
 				duplicateFinder1 = new BackgroundWorker();
 				duplicateFinder1.WorkerSupportsCancellation = true;
 				duplicateFinder1.DoWork += (s, args) => {
+					worker2run = false;
 					worker2();
 				};
 				// This runs in the main UI thread
 				duplicateFinder1.RunWorkerCompleted += (s, args) => {
 					if (args.Error != null)  // if an exception occurred during DoWork,
-						MessageBox.Show(args.Error.ToString());  // do your error handling here
+						Debug.WriteLine(args.Error.ToString());  // do your error handling here
 
-					dataGrid.Items.Refresh();
+					worker1run = false;
+
+					if (!worker2run)
+					{
+						sw.Stop();
+						dataGrid.Items.Refresh();
+					}
 				};
 
 				duplicateFinder1.RunWorkerAsync();
@@ -61,21 +74,23 @@ namespace DupFinderGUI
 				// This runs in the main UI thread
 				duplicateFinder.RunWorkerCompleted += (s, args) => {
 					if (args.Error != null)  // if an exception occurred during DoWork,
-						MessageBox.Show(args.Error.ToString());  // do your error handling here
+						Debug.WriteLine(args.Error.ToString());  // do your error handling here
 
-					dataGrid.Items.Refresh();
+					worker2run = false;
+					
+					if (!worker1run)
+					{
+						sw.Stop();
+						dataGrid.Items.Refresh();
+					}
 				};
 
 				duplicateFinder.RunWorkerAsync();
 			}
 		}
 
-		void worker(int start, int end)
+		void FileWorker(int start, int end)
 		{
-			Stopwatch sw = Stopwatch.StartNew();
-			
-			TimeSpan remainingTime;
-
 			var firstFileWasAdded = false;
 
 			for (var i = start; i < end; i++)
@@ -89,66 +104,39 @@ namespace DupFinderGUI
 						if (firstFileWasAdded == false)
 						{
 							var FirstFile = new DuplicateFileRecord(new FileInfo(FileList[i]));
-							DuplicatedFiles.Add(FirstFile.FilePath, FirstFile);
+							if (!DuplicatedFiles.ContainsKey(FirstFile.FilePath))
+								DuplicatedFiles.Add(FirstFile.FilePath, FirstFile);
 							firstFileWasAdded = true;
 						}
 
 						var duplicatedFile = new DuplicateFileRecord(new FileInfo(FileList[j]));
-						DuplicatedFiles.Add(duplicatedFile.FilePath, duplicatedFile);
+						if (!DuplicatedFiles.ContainsKey(duplicatedFile.FilePath))
+							DuplicatedFiles.Add(duplicatedFile.FilePath, duplicatedFile);
 					}
 				}
-
-				remainingTime = TimeSpan.FromMilliseconds(sw.ElapsedMilliseconds / (i + 1) * (FileList.Length - i));
-
+				
 				checkedFiles++;
 
 				Dispatcher.Invoke(() =>
 				{
-					ComparrisonProgress.Value = checkedFiles;
+					TimeSpan remainingTime = TimeSpan.FromMilliseconds(sw.ElapsedMilliseconds / checkedFiles * (FileList.Length - checkedFiles));
 					lblRemainingTime.Content = "Remaining time: " + remainingTime.ToString(@"dd\.hh\:mm\:ss");
+					lblTotalTime.Content = sw.Elapsed.ToString(@"dd\.hh\:mm\:ss");
+					ComparrisonProgress.Value = checkedFiles;
 				});
 			}
+		}
 
-			sw.Stop();
-
-			Dispatcher.Invoke(() =>
-			{
-				lblTotalTime.Content = sw.Elapsed.ToString(@"dd\.hh\:mm\:ss");
-			});
+		void worker(int start, int end)
+		{
+			FileWorker(start, FileList.Length);
 		}
 
 		void worker2()
 		{
 			var start = FileList.Length / 2;
-			var firstFileWasAdded = false;
 
-			for (var i = start; i < FileList.Length; i++)
-			{
-				firstFileWasAdded = false;
-
-				for (var j = i + 1; j < FileList.Length; j++)
-				{
-					if (FileComparer.FilesAreEqual(new FileInfo(FileList[i]), new FileInfo(FileList[j])))
-					{
-						if(firstFileWasAdded == false)
-						{
-							var FirstFile = new DuplicateFileRecord(new FileInfo(FileList[i]));
-							DuplicatedFiles.Add(FirstFile.FilePath, FirstFile);
-							firstFileWasAdded = true;
-						}
-
-						var duplicatedFile = new DuplicateFileRecord(new FileInfo(FileList[j]));
-						DuplicatedFiles.Add(duplicatedFile.FilePath, duplicatedFile);
-					}
-				}
-
-				checkedFiles++;
-
-				Dispatcher.Invoke(() =>
-				{
-					ComparrisonProgress.Value = checkedFiles;
-				});
-			}
+			FileWorker(start, FileList.Length);
 		}
 
 		private void stopSearchButton_Click(object sender, RoutedEventArgs e)
