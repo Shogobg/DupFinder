@@ -15,12 +15,18 @@ namespace DupFinderGUI
 		public List<DuplicateFileRecord> DuplicatedFiles { get; set; }
 
 		private BackgroundWorker duplicateFinder = null;
+		private BackgroundWorker duplicateFinder1 = null;
+
+		string[] FileList;
+		private int checkedFiles = 0;
 
 		public MainWindow()
 		{
-			this.DuplicatedFiles = new List<DuplicateFileRecord>();
+			DuplicatedFiles = new List<DuplicateFileRecord>();
 			InitializeComponent();
 			DataContext = this;
+			FileList = Directory.GetFiles("F:\\CommonDownloads");
+			ComparrisonProgress.Maximum = FileList.Length;
 		}
 
 		private void button_Click(object sender, RoutedEventArgs e)
@@ -32,8 +38,23 @@ namespace DupFinderGUI
 
 				// This is executed in a background thread
 				duplicateFinder.DoWork += (s, args) => {
-					worker();
+					worker(0, FileList.Length / 2 - 1);
 				};
+
+				duplicateFinder1 = new BackgroundWorker();
+				duplicateFinder1.WorkerSupportsCancellation = true;
+				duplicateFinder1.DoWork += (s, args) => {
+					worker2();
+				};
+				// This runs in the main UI thread
+				duplicateFinder1.RunWorkerCompleted += (s, args) => {
+					if (args.Error != null)  // if an exception occurred during DoWork,
+						MessageBox.Show(args.Error.ToString());  // do your error handling here
+
+					dataGrid.Items.Refresh();
+				};
+
+				duplicateFinder1.RunWorkerAsync();
 
 				// This runs in the main UI thread
 				duplicateFinder.RunWorkerCompleted += (s, args) => {
@@ -47,24 +68,17 @@ namespace DupFinderGUI
 			}
 		}
 
-		void worker()
+		void worker(int start, int end)
 		{
 			Stopwatch sw = Stopwatch.StartNew();
-
-			string[] FileList = Directory.GetFiles("F:\\CommonDownloads"); // F:\\CommonDownloads C:\\Users\\Shogo\\Downloads
-
-			Dispatcher.Invoke(() =>
-			{
-				ComparrisonProgress.Maximum = FileList.Length;
-			});
-
+			
 			TimeSpan remainingTime;
-
-			for (var i = 0; i < FileList.Length; i++)
+			
+			for (var i = start; i < end; i++)
 			{
 				for (var j = i + 1; j < FileList.Length; j++)
 				{
-					if (FilesAreEqual(new FileInfo(FileList[i]), new FileInfo(FileList[j])))
+					if (FileComparer.FilesAreEqual(new FileInfo(FileList[i]), new FileInfo(FileList[j])))
 					{
 						DuplicatedFiles.Add(new DuplicateFileRecord(new FileInfo(FileList[j])));
 					}
@@ -72,9 +86,11 @@ namespace DupFinderGUI
 
 				remainingTime = TimeSpan.FromMilliseconds(sw.ElapsedMilliseconds / (i + 1) * (FileList.Length - i));
 
+				checkedFiles++;
+
 				Dispatcher.Invoke(() =>
 				{
-					ComparrisonProgress.Value = i + 1;
+					ComparrisonProgress.Value = checkedFiles;
 					lblRemainingTime.Content = "Remaining time: " + remainingTime.ToString(@"dd\.hh\:mm\:ss");
 				});
 			}
@@ -87,35 +103,27 @@ namespace DupFinderGUI
 			});
 		}
 
-		const int BYTES_TO_READ = sizeof(Int64);
-
-		static bool FilesAreEqual(FileInfo first, FileInfo second)
+		void worker2()
 		{
-			if (first.Length != second.Length)
-				return false;
+			var start = FileList.Length / 2;
 
-			if (first.FullName == second.FullName)
-				return true;
-
-			int iterations = (int)Math.Ceiling((double)first.Length / BYTES_TO_READ);
-
-			using (FileStream fs1 = first.OpenRead())
-			using (FileStream fs2 = second.OpenRead())
+			for (var i = start; i < FileList.Length; i++)
 			{
-				byte[] one = new byte[BYTES_TO_READ];
-				byte[] two = new byte[BYTES_TO_READ];
-
-				for (int i = 0; i < iterations; i++)
+				for (var j = i + 1; j < FileList.Length; j++)
 				{
-					fs1.Read(one, 0, BYTES_TO_READ);
-					fs2.Read(two, 0, BYTES_TO_READ);
-
-					if (BitConverter.ToInt64(one, 0) != BitConverter.ToInt64(two, 0))
-						return false;
+					if (FileComparer.FilesAreEqual(new FileInfo(FileList[i]), new FileInfo(FileList[j])))
+					{
+						DuplicatedFiles.Add(new DuplicateFileRecord(new FileInfo(FileList[j])));
+					}
 				}
-			}
 
-			return true;
+				checkedFiles++;
+
+				Dispatcher.Invoke(() =>
+				{
+					ComparrisonProgress.Value = checkedFiles;
+				});
+			}
 		}
 
 		private void stopSearchButton_Click(object sender, RoutedEventArgs e)
