@@ -4,6 +4,8 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
+using System.Windows.Data;
+using System.Windows.Media.Imaging;
 
 namespace DupFinderGUI
 {
@@ -12,7 +14,7 @@ namespace DupFinderGUI
 	/// </summary>
 	public partial class MainWindow : Window
 	{
-		public List<DuplicateFileRecord> DuplicatedFiles { get; set; }
+		public Dictionary<String, DuplicateFileRecord> DuplicatedFiles { get; set; }
 
 		private BackgroundWorker duplicateFinder = null;
 		private BackgroundWorker duplicateFinder1 = null;
@@ -22,10 +24,10 @@ namespace DupFinderGUI
 
 		public MainWindow()
 		{
-			DuplicatedFiles = new List<DuplicateFileRecord>();
+			DuplicatedFiles = new Dictionary<String, DuplicateFileRecord>();
 			InitializeComponent();
 			DataContext = this;
-			FileList = Directory.GetFiles("F:\\CommonDownloads");
+			FileList = Directory.GetFiles("F:\\PCBackup\\Hen\\dup");
 			ComparrisonProgress.Maximum = FileList.Length;
 		}
 
@@ -73,14 +75,26 @@ namespace DupFinderGUI
 			Stopwatch sw = Stopwatch.StartNew();
 			
 			TimeSpan remainingTime;
-			
+
+			var firstFileWasAdded = false;
+
 			for (var i = start; i < end; i++)
 			{
+				firstFileWasAdded = false;
+
 				for (var j = i + 1; j < FileList.Length; j++)
 				{
 					if (FileComparer.FilesAreEqual(new FileInfo(FileList[i]), new FileInfo(FileList[j])))
 					{
-						DuplicatedFiles.Add(new DuplicateFileRecord(new FileInfo(FileList[j])));
+						if (firstFileWasAdded == false)
+						{
+							var FirstFile = new DuplicateFileRecord(new FileInfo(FileList[i]));
+							DuplicatedFiles.Add(FirstFile.FilePath, FirstFile);
+							firstFileWasAdded = true;
+						}
+
+						var duplicatedFile = new DuplicateFileRecord(new FileInfo(FileList[j]));
+						DuplicatedFiles.Add(duplicatedFile.FilePath, duplicatedFile);
 					}
 				}
 
@@ -106,14 +120,25 @@ namespace DupFinderGUI
 		void worker2()
 		{
 			var start = FileList.Length / 2;
+			var firstFileWasAdded = false;
 
 			for (var i = start; i < FileList.Length; i++)
 			{
+				firstFileWasAdded = false;
+
 				for (var j = i + 1; j < FileList.Length; j++)
 				{
 					if (FileComparer.FilesAreEqual(new FileInfo(FileList[i]), new FileInfo(FileList[j])))
 					{
-						DuplicatedFiles.Add(new DuplicateFileRecord(new FileInfo(FileList[j])));
+						if(firstFileWasAdded == false)
+						{
+							var FirstFile = new DuplicateFileRecord(new FileInfo(FileList[i]));
+							DuplicatedFiles.Add(FirstFile.FilePath, FirstFile);
+							firstFileWasAdded = true;
+						}
+
+						var duplicatedFile = new DuplicateFileRecord(new FileInfo(FileList[j]));
+						DuplicatedFiles.Add(duplicatedFile.FilePath, duplicatedFile);
 					}
 				}
 
@@ -129,6 +154,56 @@ namespace DupFinderGUI
 		private void stopSearchButton_Click(object sender, RoutedEventArgs e)
 		{
 
+		}
+
+		private void btnDelete_Click(object sender, RoutedEventArgs e)
+		{
+			var deleteFilesList = new List<string>();
+
+			foreach(var currentFile in DuplicatedFiles)
+			{
+				if(currentFile.Value.IsSelected)
+				{
+					deleteFilesList.Add(currentFile.Value.FilePath);
+				}
+			}
+
+			foreach (var filePath in deleteFilesList)
+			{
+				File.Delete(filePath);
+				DuplicatedFiles.Remove(filePath);
+			}
+
+			Dispatcher.Invoke(() =>
+			{
+				dataGrid.Items.Refresh();
+			});
+		}
+	}
+
+	public class UriToCachedImageConverter : IValueConverter
+	{
+		public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+		{
+			if (value == null)
+				return null;
+
+			if (!string.IsNullOrEmpty(value.ToString()))
+			{
+				BitmapImage bi = new BitmapImage();
+				bi.BeginInit();
+				bi.UriSource = new Uri(value.ToString());
+				bi.CacheOption = BitmapCacheOption.OnLoad;
+				bi.EndInit();
+				return bi;
+			}
+
+			return null;
+		}
+
+		public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+		{
+			throw new NotImplementedException("Two way conversion is not supported.");
 		}
 	}
 }

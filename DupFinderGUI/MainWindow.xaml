@@ -5,24 +5,53 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:DupFinderGUI"
         mc:Ignorable="d"
-        Title="MainWindow" Height="350" Width="923.59">
+        Title="MainWindow" Height="650" Width="923.59">
 	<Grid>
 		<ProgressBar x:Name="ComparrisonProgress" HorizontalAlignment="Left" Height="11" VerticalAlignment="Bottom" Width="916" SnapsToDevicePixels="True"/>
 		<TextBlock Text="{Binding ElementName=ComparrisonProgress, Path=Value, StringFormat={}{0:0}}" HorizontalAlignment="Center" VerticalAlignment="Bottom"/>
 		<Button x:Name="button" Content="Find duplicates" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="89" Click="button_Click"/>
-		<DataGrid x:Name="dataGrid" HorizontalAlignment="Left"
-				  Margin="10,35,0,0" VerticalAlignment="Top"
-				  Width="896" Height="263" ItemsSource="{Binding DuplicatedFiles}"
-				  AutoGenerateColumns="False" GridLinesVisibility="Horizontal">
+		<DataGrid x:Name="dataGrid"
+				  HorizontalAlignment="Left"
+				  Margin="10,35,0,0"
+				  VerticalAlignment="Top"
+				  Width="896"
+				  Height="563"
+				  ItemsSource="{Binding DuplicatedFiles}"
+				  AutoGenerateColumns="False"
+				  GridLinesVisibility="Horizontal">
+			<DataGrid.Resources>
+				<Style x:Key="NoFocusColumStyle" TargetType="{x:Type DataGridCell}">
+					<Setter Property="IsHitTestVisible" Value="False"/>
+				</Style>
+				<local:UriToCachedImageConverter x:Key="uriToImageConv" />
+			</DataGrid.Resources>
+			<DataGrid.CellStyle>
+				<Style TargetType="DataGridCell">
+					<Style.Triggers>
+						<Trigger Property="IsSelected"  Value="True">
+							<Setter Property="Background" Value="White" />
+							<Setter Property="Foreground" Value="Black" />
+							<Setter Property="BorderThickness" Value="0" />
+						</Trigger>
+					</Style.Triggers>
+				</Style>
+			</DataGrid.CellStyle>
 			<DataGrid.Columns>
-				<DataGridCheckBoxColumn />
-				<DataGridTextColumn Binding="{Binding FileName}" Header="File" IsReadOnly="True" />
-				<DataGridTextColumn Binding="{Binding Directory}" Header="Directory" IsReadOnly="True" />
-				<DataGridTextColumn Binding="{Binding Size}" Header="Size" IsReadOnly="True" />
 				<DataGridTemplateColumn>
 					<DataGridTemplateColumn.CellTemplate>
 						<DataTemplate>
-							<Image Source="{Binding Path=FilePath}" Height="100" Width="100" />
+							<CheckBox IsChecked="{Binding Path=Value.IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+						</DataTemplate>
+					</DataGridTemplateColumn.CellTemplate>
+				</DataGridTemplateColumn>
+				<DataGridTextColumn Binding="{Binding Value.FileName}" Header="File" IsReadOnly="True" />
+				<DataGridTextColumn Binding="{Binding Value.Directory}" Header="Directory" IsReadOnly="True" />
+				<DataGridTextColumn Binding="{Binding Value.Size}" Header="Size" IsReadOnly="True" />
+				<DataGridTextColumn Binding="{Binding Value.CreationTime}" Header="Creation time" IsReadOnly="True" />
+				<DataGridTemplateColumn>
+					<DataGridTemplateColumn.CellTemplate>
+						<DataTemplate>
+								<Image Source="{Binding Path=Value.FilePath, Converter={StaticResource uriToImageConv}}" Height="100" Width="100" />
 						</DataTemplate>
 					</DataGridTemplateColumn.CellTemplate>
 				</DataGridTemplateColumn>
@@ -30,6 +59,7 @@
 		</DataGrid>
 		<Label x:Name="lblRemainingTime" Content="Label" HorizontalAlignment="Left" Margin="335,5,0,0" VerticalAlignment="Top" Width="172" Height="25"/>
 		<Label x:Name="lblTotalTime" Content="Label" HorizontalAlignment="Left" Margin="185,4,0,0" VerticalAlignment="Top" Width="145"/>
-		<Button x:Name="stopSearchButton" Content="Button" HorizontalAlignment="Left" Margin="104,10,0,0" VerticalAlignment="Top" Width="75" Click="stopSearchButton_Click"/>
+		<Button x:Name="stopSearchButton" Content="Stop" HorizontalAlignment="Left" Margin="104,10,0,0" VerticalAlignment="Top" Width="75" Click="stopSearchButton_Click"/>
+		<Button x:Name="btnDelete" Content="Delete" HorizontalAlignment="Left" Margin="514,10,0,0" VerticalAlignment="Top" Width="75" Click="btnDelete_Click" />
 	</Grid>
 </Window>
