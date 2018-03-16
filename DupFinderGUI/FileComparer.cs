@@ -7,15 +7,15 @@ namespace DupFinderGUI
 	{
 		const int BYTES_TO_READ = sizeof(Int64);
 
-		public static bool FilesAreEqual(FileInfo first, FileInfo second)
+		public static bool FilesAreEqual(FileInfo firstFileInfo, FileInfo secondFileInfo)
 		{
-			if (first.Length != second.Length)
+			if (firstFileInfo.Length != secondFileInfo.Length)
 				return false;
 
-			int iterations = (int)Math.Ceiling((double)first.Length / BYTES_TO_READ);
+			int iterations = (int)Math.Ceiling((double)firstFileInfo.Length / BYTES_TO_READ);
 
-			using (FileStream fs1 = first.OpenRead())
-			using (FileStream fs2 = second.OpenRead())
+			using (FileStream fs1 = firstFileInfo.OpenRead())
+			using (FileStream fs2 = secondFileInfo.OpenRead())
 			{
 				byte[] one = new byte[BYTES_TO_READ];
 				byte[] two = new byte[BYTES_TO_READ];

@@ -4,8 +4,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
-using System.Windows.Data;
-using System.Windows.Media.Imaging;
+using System.Threading.Tasks;
 
 namespace DupFinderGUI
 {
@@ -17,24 +16,21 @@ namespace DupFinderGUI
 		public Dictionary<String, DuplicateFileRecord> DuplicatedFiles { get; set; }
 
 		private BackgroundWorker duplicateFinder = null;
-		private BackgroundWorker duplicateFinder1 = null;
 
 		string[] FileList;
 		private int checkedFiles = 0;
 		Stopwatch sw = new Stopwatch();
-
-		bool worker1run = false, worker2run = false;
 
 		public MainWindow()
 		{
 			DuplicatedFiles = new Dictionary<String, DuplicateFileRecord>();
 			InitializeComponent();
 			DataContext = this;
-			FileList = Directory.GetFiles("F:\\PCBackup\\Hot");
+			FileList = Directory.GetFiles("F:\\CommonDownloads");
 			ComparrisonProgress.Maximum = FileList.Length;
 		}
 
-		private void button_Click(object sender, RoutedEventArgs e)
+		private async void button_Click(object sender, RoutedEventArgs e)
 		{
 			sw.Start();
 
@@ -44,48 +40,9 @@ namespace DupFinderGUI
 				duplicateFinder.WorkerSupportsCancellation = true;
 
 				// This is executed in a background thread
-				duplicateFinder.DoWork += (s, args) => {
-					worker1run = false;
-					worker(0, FileList.Length / 2 - 1);
-				};
-
-				duplicateFinder1 = new BackgroundWorker();
-				duplicateFinder1.WorkerSupportsCancellation = true;
-				duplicateFinder1.DoWork += (s, args) => {
-					worker2run = false;
-					worker2();
-				};
-				// This runs in the main UI thread
-				duplicateFinder1.RunWorkerCompleted += (s, args) => {
-					if (args.Error != null)  // if an exception occurred during DoWork,
-						Debug.WriteLine(args.Error.ToString());  // do your error handling here
-
-					worker1run = false;
-
-					if (!worker2run)
-					{
-						sw.Stop();
-						dataGrid.Items.Refresh();
-					}
-				};
-
-				duplicateFinder1.RunWorkerAsync();
-
-				// This runs in the main UI thread
-				duplicateFinder.RunWorkerCompleted += (s, args) => {
-					if (args.Error != null)  // if an exception occurred during DoWork,
-						Debug.WriteLine(args.Error.ToString());  // do your error handling here
-
-					worker2run = false;
-					
-					if (!worker1run)
-					{
-						sw.Stop();
-						dataGrid.Items.Refresh();
-					}
-				};
-
-				duplicateFinder.RunWorkerAsync();
+				Task.Run(() => FileWorker(0, FileList.Length/2 - 1));
+				Task.Run(() => FileWorker(FileList.Length / 2, FileList.Length-1));
+				
 			}
 		}
 
@@ -106,6 +63,7 @@ namespace DupFinderGUI
 							var FirstFile = new DuplicateFileRecord(new FileInfo(FileList[i]));
 							if (!DuplicatedFiles.ContainsKey(FirstFile.FilePath))
 								DuplicatedFiles.Add(FirstFile.FilePath, FirstFile);
+
 							firstFileWasAdded = true;
 						}
 
@@ -123,22 +81,11 @@ namespace DupFinderGUI
 					lblRemainingTime.Content = "Remaining time: " + remainingTime.ToString(@"dd\.hh\:mm\:ss");
 					lblTotalTime.Content = sw.Elapsed.ToString(@"dd\.hh\:mm\:ss");
 					ComparrisonProgress.Value = checkedFiles;
+					dataGrid.Items.Refresh();
 				});
 			}
 		}
-
-		void worker(int start, int end)
-		{
-			FileWorker(start, FileList.Length);
-		}
-
-		void worker2()
-		{
-			var start = FileList.Length / 2;
-
-			FileWorker(start, FileList.Length);
-		}
-
+		
 		private void stopSearchButton_Click(object sender, RoutedEventArgs e)
 		{
 
@@ -166,32 +113,6 @@ namespace DupFinderGUI
 			{
 				dataGrid.Items.Refresh();
 			});
-		}
-	}
-
-	public class UriToCachedImageConverter : IValueConverter
-	{
-		public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
-		{
-			if (value == null)
-				return null;
-
-			if (!string.IsNullOrEmpty(value.ToString()))
-			{
-				BitmapImage bi = new BitmapImage();
-				bi.BeginInit();
-				bi.UriSource = new Uri(value.ToString());
-				bi.CacheOption = BitmapCacheOption.OnLoad;
-				bi.EndInit();
-				return bi;
-			}
-
-			return null;
-		}
-
-		public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
-		{
-			throw new NotImplementedException("Two way conversion is not supported.");
 		}
 	}
 }
