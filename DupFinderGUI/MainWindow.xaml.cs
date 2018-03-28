@@ -13,25 +13,40 @@ namespace DupFinderGUI
 	/// </summary>
 	public partial class MainWindow : Window
 	{
+		private System.Windows.Forms.FolderBrowserDialog folderDialog = new System.Windows.Forms.FolderBrowserDialog();
+
 		public Dictionary<String, DuplicateFileRecord> DuplicatedFiles { get; set; }
 
 		private BackgroundWorker duplicateFinder = null;
 
+		string searchFolder = "";
+
 		string[] FileList;
 		private int checkedFiles = 0;
 		Stopwatch sw = new Stopwatch();
+
+		private Task workerOne, workerTwo;
+
+		private FileInfo[] FileInfoList;
 
 		public MainWindow()
 		{
 			DuplicatedFiles = new Dictionary<String, DuplicateFileRecord>();
 			InitializeComponent();
 			DataContext = this;
-			FileList = Directory.GetFiles("F:\\CommonDownloads");
-			ComparrisonProgress.Maximum = FileList.Length;
 		}
 
-		private async void button_Click(object sender, RoutedEventArgs e)
+		private async void btnSearch_Click(object sender, RoutedEventArgs e)
 		{
+			FileList = Directory.GetFiles(searchFolder);
+			ComparrisonProgress.Maximum = FileList.Length;
+			FileInfoList = new FileInfo[FileList.Length];
+
+			for (var i = 0; i < FileList.Length; i++)
+			{
+				FileInfoList[i] = new FileInfo(FileList[i]);
+			}
+
 			sw.Start();
 
 			if (duplicateFinder == null)
@@ -40,9 +55,8 @@ namespace DupFinderGUI
 				duplicateFinder.WorkerSupportsCancellation = true;
 
 				// This is executed in a background thread
-				Task.Run(() => FileWorker(0, FileList.Length/2 - 1));
-				Task.Run(() => FileWorker(FileList.Length / 2, FileList.Length-1));
-				
+				workerOne = Task.Run(() => FileWorker(0, FileList.Length/2 - 1));
+				workerTwo = Task.Run(() => FileWorker(FileList.Length / 2, FileList.Length-1));
 			}
 		}
 
@@ -56,25 +70,25 @@ namespace DupFinderGUI
 
 				for (var j = i + 1; j < FileList.Length; j++)
 				{
-					if (FileComparer.FilesAreEqual(new FileInfo(FileList[i]), new FileInfo(FileList[j])))
+					if (FileComparer.FilesAreEqual(FileInfoList[i], FileInfoList[j]))
 					{
 						if (firstFileWasAdded == false)
 						{
-							var FirstFile = new DuplicateFileRecord(new FileInfo(FileList[i]));
+							var FirstFile = new DuplicateFileRecord(FileInfoList[i]);
 							if (!DuplicatedFiles.ContainsKey(FirstFile.FilePath))
 								DuplicatedFiles.Add(FirstFile.FilePath, FirstFile);
 
 							firstFileWasAdded = true;
 						}
 
-						var duplicatedFile = new DuplicateFileRecord(new FileInfo(FileList[j]));
+						var duplicatedFile = new DuplicateFileRecord(FileInfoList[j]);
 						if (!DuplicatedFiles.ContainsKey(duplicatedFile.FilePath))
 							DuplicatedFiles.Add(duplicatedFile.FilePath, duplicatedFile);
 					}
 				}
-				
-				checkedFiles++;
 
+				checkedFiles++;
+				
 				Dispatcher.Invoke(() =>
 				{
 					TimeSpan remainingTime = TimeSpan.FromMilliseconds(sw.ElapsedMilliseconds / checkedFiles * (FileList.Length - checkedFiles));
@@ -84,11 +98,12 @@ namespace DupFinderGUI
 					dataGrid.Items.Refresh();
 				});
 			}
+
+			Debug.WriteLine("Finished fetching file info");
 		}
 		
 		private void stopSearchButton_Click(object sender, RoutedEventArgs e)
 		{
-
 		}
 
 		private void btnDelete_Click(object sender, RoutedEventArgs e)
@@ -113,6 +128,13 @@ namespace DupFinderGUI
 			{
 				dataGrid.Items.Refresh();
 			});
+		}
+
+		private void btnBrowse_Click(object sender, RoutedEventArgs e)
+		{
+			folderDialog.SelectedPath = searchFolder;
+			if (folderDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+				searchFolder = folderDialog.SelectedPath;
 		}
 	}
 }

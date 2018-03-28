@@ -9,7 +9,7 @@
 	<Grid>
 		<ProgressBar x:Name="ComparrisonProgress" HorizontalAlignment="Left" Height="11" VerticalAlignment="Bottom" Width="916" SnapsToDevicePixels="True"/>
 		<TextBlock Text="{Binding ElementName=ComparrisonProgress, Path=Value, StringFormat={}{0:0}}" HorizontalAlignment="Center" VerticalAlignment="Bottom"/>
-		<Button x:Name="button" Content="Find duplicates" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="89" Click="button_Click"/>
+		<Button x:Name="btnSearch" Content="Find duplicates" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="89" Click="btnSearch_Click"/>
 		<DataGrid x:Name="dataGrid"
 				  HorizontalAlignment="Left"
 				  Margin="10,35,0,0"
@@ -51,7 +51,7 @@
 				<DataGridTemplateColumn>
 					<DataGridTemplateColumn.CellTemplate>
 						<DataTemplate>
-								<Image Source="{Binding Path=Value.FilePath, Converter={StaticResource uriToImageConv}}" Height="100" Width="100" />
+							<Image Source="{Binding Path=Value.FilePath, Converter={StaticResource uriToImageConv}}" Height="100" Width="100" />
 						</DataTemplate>
 					</DataGridTemplateColumn.CellTemplate>
 				</DataGridTemplateColumn>
@@ -61,5 +61,6 @@
 		<Label x:Name="lblTotalTime" Content="Label" HorizontalAlignment="Left" Margin="185,4,0,0" VerticalAlignment="Top" Width="145"/>
 		<Button x:Name="stopSearchButton" Content="Stop" HorizontalAlignment="Left" Margin="104,10,0,0" VerticalAlignment="Top" Width="75" Click="stopSearchButton_Click"/>
 		<Button x:Name="btnDelete" Content="Delete" HorizontalAlignment="Left" Margin="514,10,0,0" VerticalAlignment="Top" Width="75" Click="btnDelete_Click" />
+		<Button x:Name="btnBrowse" Content="browse" HorizontalAlignment="Left" Margin="603,10,0,0" VerticalAlignment="Top" Width="75" Click="btnBrowse_Click" />
 	</Grid>
 </Window>
