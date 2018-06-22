@@ -4,8 +4,9 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:DupFinderGUI"
-        mc:Ignorable="d"
+				mc:Ignorable="d"
         Title="MainWindow" Height="650" Width="923.59">
+
 	<Grid>
 		<ProgressBar x:Name="ComparrisonProgress" HorizontalAlignment="Left" Height="11" VerticalAlignment="Bottom" Width="916" SnapsToDevicePixels="True"/>
 		<TextBlock Text="{Binding ElementName=ComparrisonProgress, Path=Value, StringFormat={}{0:0}}" HorizontalAlignment="Center" VerticalAlignment="Bottom"/>
@@ -18,7 +19,8 @@
 				  Height="563"
 				  ItemsSource="{Binding DuplicatedFiles}"
 				  AutoGenerateColumns="False"
-				  GridLinesVisibility="Horizontal">
+				  GridLinesVisibility="Horizontal"
+							MouseDoubleClick="GridMouseDoubleClick">
 			<DataGrid.Resources>
 				<Style x:Key="NoFocusColumStyle" TargetType="{x:Type DataGridCell}">
 					<Setter Property="IsHitTestVisible" Value="False"/>
@@ -48,7 +50,7 @@
 				<DataGridTextColumn Binding="{Binding Value.Directory}" Header="Directory" IsReadOnly="True" />
 				<DataGridTextColumn Binding="{Binding Value.Size}" Header="Size" IsReadOnly="True" />
 				<DataGridTextColumn Binding="{Binding Value.CreationTime}" Header="Creation time" IsReadOnly="True" />
-				<DataGridTemplateColumn>
+				<DataGridTemplateColumn IsReadOnly="True">
 					<DataGridTemplateColumn.CellTemplate>
 						<DataTemplate>
 							<Image Source="{Binding Path=Value.FilePath, Converter={StaticResource uriToImageConv}}" Height="100" Width="100" />

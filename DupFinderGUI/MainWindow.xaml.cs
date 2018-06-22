@@ -19,18 +19,19 @@ namespace DupFinderGUI
 
 		private BackgroundWorker duplicateFinder = null;
 
-		string searchFolder = "";
+		public string searchFolder = "";
 
 		string[] FileList;
 		private int checkedFiles = 0;
 		Stopwatch sw = new Stopwatch();
 
-		private Task workerOne, workerTwo;
+		private List<Task> workers = new List<Task>();
 
 		private FileInfo[] FileInfoList;
 
 		public MainWindow()
 		{
+
 			DuplicatedFiles = new Dictionary<String, DuplicateFileRecord>();
 			InitializeComponent();
 			DataContext = this;
@@ -38,7 +39,7 @@ namespace DupFinderGUI
 
 		private void btnSearch_Click(object sender, RoutedEventArgs e)
 		{
-			FileList = Directory.GetFiles(searchFolder);
+			FileList = Directory.GetFiles(searchFolder, "*", SearchOption.AllDirectories);
 			ComparrisonProgress.Maximum = FileList.Length;
 			FileInfoList = new FileInfo[FileList.Length];
 
@@ -55,9 +56,17 @@ namespace DupFinderGUI
 				duplicateFinder.WorkerSupportsCancellation = true;
 
 				// This is executed in a background thread
-				
-				workerOne = Task.Factory.StartNew(() => FileWorker(0, FileList.Length / 2 - 1), TaskCreationOptions.LongRunning);
-				workerTwo = Task.Factory.StartNew(() => FileWorker(FileList.Length / 2, FileList.Length-1), TaskCreationOptions.LongRunning);
+				workers.Add(Task.Factory.StartNew(() => FileWorker(0, FileList.Length - 1), TaskCreationOptions.LongRunning));
+				workers.Add(Task.Factory.StartNew(() => FileWorker(FileList.Length / 2, FileList.Length - 1), TaskCreationOptions.LongRunning));
+
+				// Update the data grid only after all records were added to prevent crash
+				Task.Factory.ContinueWhenAll(workers.ToArray(), updateUiTask =>
+				{
+					Dispatcher.BeginInvoke((Action)(() =>
+					{
+						dataGrid.Items.Refresh();
+					}));
+				});
 			}
 		}
 
@@ -69,7 +78,7 @@ namespace DupFinderGUI
 			{
 				firstFileWasAdded = false;
 
-				for (var j = i + 1; j < FileList.Length; j++)
+				for (var j = i + 1; j < FileList.Length - 1; j++)
 				{
 					if (FileComparer.FilesAreEqual(FileInfoList[i], FileInfoList[j]))
 					{
@@ -89,28 +98,19 @@ namespace DupFinderGUI
 				}
 
 				checkedFiles++;
-				
+
 				Dispatcher.BeginInvoke((Action)(() =>
 				{
 					TimeSpan remainingTime = TimeSpan.FromMilliseconds(sw.ElapsedMilliseconds / checkedFiles * (FileList.Length - checkedFiles));
 					lblRemainingTime.Content = "Remaining time: " + remainingTime.ToString(@"dd\.hh\:mm\:ss");
 					lblTotalTime.Content = sw.Elapsed.ToString(@"dd\.hh\:mm\:ss");
 					ComparrisonProgress.Value = checkedFiles;
-					
 				}));
 			}
 
-			Dispatcher.BeginInvoke((Action)(() =>
-			{
-				// To do: this may cause a crash that collection was changed
-				// while refreshing - research and find a thread-safe fix
-				// Probably best to find the duplicates in the background and then show them all
-				dataGrid.Items.Refresh();
-			}));
-
 			Debug.WriteLine("Finished fetching file info");
 		}
-		
+
 		private void stopSearchButton_Click(object sender, RoutedEventArgs e)
 		{
 		}
@@ -119,9 +119,9 @@ namespace DupFinderGUI
 		{
 			var deleteFilesList = new List<string>();
 
-			foreach(var currentFile in DuplicatedFiles)
+			foreach (var currentFile in DuplicatedFiles)
 			{
-				if(currentFile.Value.IsSelected)
+				if (currentFile.Value.IsSelected)
 				{
 					deleteFilesList.Add(currentFile.Value.FilePath);
 				}
@@ -144,6 +144,12 @@ namespace DupFinderGUI
 			folderDialog.SelectedPath = searchFolder;
 			if (folderDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
 				searchFolder = folderDialog.SelectedPath;
+		}
+
+		private void GridMouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+		{
+			//Process.Start(sender.SelectedValue.Key)
+			Debug.WriteLine("Clicked");
 		}
 	}
 }
